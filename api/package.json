@@ -1,0 +1,27 @@
+{
+  "name": "hookopsapi",
+  "version": "0.1.0",
+  "description": "Webhook magic",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brettski/hookops.git"
+  },
+  "keywords": [
+    "nodejs",
+    "api",
+    "webhooks",
+    "now"
+  ],
+  "author": "Brett Slaski <brettski@yahoo.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/brettski/hookops/issues"
+  },
+  "engines" : {
+    "node": "10.x"
+  }
+}
