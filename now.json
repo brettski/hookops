@@ -1,4 +1,7 @@
 {
     "name": "hookops",
-    "version": 2
+    "version": 2,
+    "env": {
+        "ZAP_DOCUSIGN_IN_HOOK_URL": "@zap_docusign_in_hook_url"
+    }
 }

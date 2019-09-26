@@ -2,6 +2,12 @@
 
 // Catch completed docusign webhook
 import xml2js from 'xml2js'
+import axios from 'axios'
+import * as Sentry from '@sentry/node'
+
+Sentry.init({ dsn: process.env.SENTRY_NODE_DSN })
+console.log('the dsn', process.env.SENTRY_NODE_DSN)
+console.log('zap', process.env.ZAP_DOCUSIGN_IN_HOOK_URL)
 
 export default (req, res) => {
     let payload = []
@@ -18,15 +24,35 @@ export default (req, res) => {
                 //console.log('payload received:', payload)
                 //console.log('end of payload')
                 const result = await xml2js.parseStringPromise(payload, {explicitArray: false, mergeAttrs: true})
-                console.log(result)
-                res.writeHead(202, {'Content-Type': 'application/json'})
                 //res.write(JSON.stringify(result))
-                res.write(JSON.stringify(parseDocuSign(result)))
+                const docusign = parseDocuSign(result)
+                try {
+                    const axres = await axios.post(process.env.ZAP_DOCUSIGN_IN_HOOK_URL, docusign)
+                    if (axres.status < 200 || axres.status > 299) {
+                        console.error(`Issue sending hook. status ${axres.status}`)
+                        Sentry.captureMessage(`Issue sending webhook request: ${axres}`)
+                        return
+                    }
+                } catch (err) {
+                    console.error(err)
+                    Sentry.captureException(err)
+                    res.writeHead(500, {'Content-Type':'text/plain'})
+                    res.write(err.message)
+                    res.end()
+                    return
+                }
+                //ZAP_DOCUSIGN_IN_HOOK_URL
+                
+                res.writeHead(200, {'Content-Type': 'application/json'})
+                res.write(JSON.stringify(docusign))
                 res.end()
+
+
             })
 
     } else {
-        console.error('Non POST request')
+        console.error(`Non POST request, ${req.method}`)
+        Sentry.captureMessage(`Non POST request, ${req.method}`, 'warning' )
         res.writeHead(405, {'Content-Type': 'text/plain'})
         res.write(`What was that? I didn't like that much.`)
         res.end()
@@ -37,7 +63,7 @@ const parseDocuSign = (docuload) => {
     const envlStatus = docuload.DocuSignEnvelopeInformation.EnvelopeStatus
     const rstatus = docuload.DocuSignEnvelopeInformation.EnvelopeStatus.RecipientStatuses.RecipientStatus
     const du = {
-        extraFormField: '',
+        extraFormFields: '',
     } // docusign object
 
     // Receipent values
@@ -66,7 +92,7 @@ const parseDocuSign = (docuload) => {
                 du.dateSigned = f.value
                 break
             default:
-                du.extraFormField += `${f.value}\n`
+                du.extraFormFields += `${f.value}\n`
         } 
 
     }
@@ -75,6 +101,7 @@ const parseDocuSign = (docuload) => {
     du.envelopeId = envlStatus.EnvelopeID
     du.senderUserName = envlStatus.UserName
     du.senderEmail = envlStatus.Email
+    du.templateName = envlStatus.DocumentStatuses.DocumentStatus.TemplateName
 
     return du
 }
